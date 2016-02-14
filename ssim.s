@@ -29,6 +29,7 @@
 .equiv SYS_write, 4
 .equiv SYS_close, 6
 .equiv SYS_waitpid, 7
+.equiv SYS_alarm, 27
 
 /**********************************************************************/
 .data
@@ -137,9 +138,8 @@ main:
 	cmp $0, %eax
 	jl exit
 
-#accept  
+#accept sys_accept(int fd, struct sockaddr *upeer_sockaddr, int *upeer_addrlen) 
 accept_loop:
-	accept sys_accept(int fd, struct sockaddr *upeer_sockaddr, int *upeer_addrlen)
 	mov fd_socket, (accept_args)
 	mov $accept_args,%ecx
 	mov $SYS_ACCEPT,%ebx
@@ -183,7 +183,7 @@ fork:
 	jg closefork
 	jz continuefork 
 complainfork:       
-	nop #TODO complain
+	nop                                     #TODO complain parent have an error
 closefork:
 	mov (clientsock),%ebx
 	mov $SYS_close,%eax
@@ -191,14 +191,32 @@ closefork:
 	decl (available_connections)
 	jmp accept_loop
 continuefork:
+    mov (clientsock), fd_socket
+    
+    mov $SYS_alarm, %eax                  /*cloce child after 32 sec*/
+    mov $32,%ebx                          /*if not respont*/ 
+    int $0x80
+    /**************************************/
+    /* TODO read client and select "file" */
+    /**************************************/
+    mov $SYS_alarm, %eax                  /*reset alarm*/
+    mov $0,%ebx
+    int $0x80
+ 
 	jmp write
 	nop
+	
+	
 write:  
-	movl $SYS_write, %eax                     /* use the write syscall*/
-	movl clientsock, %ebx                 /*TODO write to clientsocket*/
-	movl $df, %ecx          
-	movl $dfLen, %edx       
-	int $0x80       
+	mov $SYS_write, %eax                     /* use the write syscall*/
+	mov fd_socket, %ebx                        /* write to fd_socket */
+	mov $df, %ecx          
+	mov $dfLen, %edx       
+	int $0x80
+	mov $SYS_close, %eax 
+	mov fd_socket, %ebx
+    int $0x80
+    	       
 	jmp ok
     
 ok:

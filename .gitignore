@@ -7,3 +7,6 @@ ssims
 
 #tests
 tests
+
+#editor
+*.geany
