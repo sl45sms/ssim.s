@@ -19,6 +19,7 @@
 .equiv SOL_SOCKET, 1
 .equiv SO_REUSEADDR, 2
 .equiv AF_INET, 2                    /* Internet IP (V4) Protocol 	*/
+.equiv PF_INET, 2
 .equiv WNOHANG, 1                /*waitpid should return immediately*/
 .equiv ECHILD, 10 
 
@@ -39,7 +40,7 @@ df:
 .equ dfLen, . - df
 
 socket_args:
-	.int AF_INET                                              /*IPV4*/
+	.int PF_INET                                              /*IPV4*/
 	.int SOCK_STREAM        /*two-way, connection-based byte streams*/
 	.int 0 
 
