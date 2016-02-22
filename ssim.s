@@ -2,6 +2,11 @@
 
 .equiv port, 10631  #port to listen
 
+.equiv bufsiz, 4096    # enough for an HTTP GET request TODO check for pottencial buf overflow?
+
+.equiv path, buf+5
+
+
 .equiv fd_socket, %ebp #FD file descriptor
 
 .equiv sockaddr_in_size, 16
@@ -90,6 +95,9 @@ sockaddr_size:
 
 clientsock:
 	.int 0
+
+bufp:   .int 0
+buf:    .fill bufsiz, 1, 0
 
 /******************************************************************************/
 .text
@@ -186,7 +194,7 @@ fork:
 	jg closefork
 	jz continuefork 
 complainfork:       
-	nop                                     #TODO complain parent have an error
+	nop                                     /* TODO complain parent have an error */
 closefork:
 	mov (clientsock),%ebx
 	mov $SYS_close,%eax
@@ -196,12 +204,94 @@ closefork:
 continuefork:
 	mov (clientsock), fd_socket
 
-	mov $SYS_alarm, %eax                  /*cloce child after 32 sec*/
-	mov $32,%ebx                          /*if not respont*/ 
+setalarm:
+	mov $SYS_alarm, %eax                  /* cloce child after 32 sec */
+	mov $32,%ebx                          /* if not respont */ 
 	int $0x80
 	/**************************************/
 	/* TODO read client and select "file" */
 	/**************************************/
+
+readreq:
+	movl $0, (bufp)
+keepread:	
+	mov (bufp), %eax
+	mov $bufsiz-1, %edx
+	sub %eax, %edx                    /* calculate remaining space */
+        add $buf, %eax
+read:       
+	mov %edx,%edx
+	mov %eax,%ecx
+	mov fd_socket,%ebx
+	mov $SYS_read, %eax
+	int $0x80
+	cmp $0, %eax
+	jnl noreaderr
+readerr:                 
+	mov fd_socket,%ebx
+	mov $SYS_close,%eax
+	int $0x80
+        nop                        #TODO report error
+	jmp accept_loop
+
+noreaderr:
+        je donereading             #eof
+	add (bufp), %eax 
+	mov %eax, (bufp)
+	mov $('\r | '\n << 8 | '\r << 16 | '\n << 24), %eax  #check crlf
+        mov $buf, %esi
+        mov (bufp), %ecx
+        sub $3, %ecx
+        jle keepread
+allign:
+	cmp (%esi), %eax
+	je donereading
+	inc %esi
+	loop allign 
+	jmp keepread
+
+donereading:
+
+
+
+
+	#scan path
+	cmp $5, (bufp)
+	jl badreq               #path too short     
+
+        
+        #print headers to stdout
+	mov $SYS_write, %eax                     /* use the write syscall*/
+	mov $1, %ebx                             /* write to stdout */
+	mov $buf, %ecx
+	mov $bufsiz, %edx
+	int $0x80
+
+
+ 	xor %eax, %eax
+	mov $0x20, %al          #look for space 
+        mov $buf+5, %edi        #ignore GET
+	sub %ecx, %ecx
+	not %ecx 
+        cld                     #look forward
+        repne scasb
+        test %ecx, %ecx         #test if %eax is 0       
+        jz badreq
+#        movb $0, -1(%edi)       # NUL-terminate the path.
+#        movb $0x10, -1(%edi)
+        not %ecx
+	dec %ecx                # %ecx contains the length 
+         
+
+#print path to stdout
+        mov $SYS_write, %eax                     /* use the write syscall*/
+        mov $1, %ebx                             /* write to stdout */
+        mov %ecx, %edx                           /* length */
+        mov $path, %ecx                          /* path string */
+        int $0x80
+
+
+resetalarm:
 	mov $SYS_alarm, %eax                  /*reset alarm*/
 	mov $0,%ebx
 	int $0x80
@@ -215,15 +305,20 @@ write:
 	mov $df, %ecx          
 	mov $dfLen, %edx       
 	int $0x80
-	mov $SYS_close, %eax 
-	mov fd_socket, %ebx
-	int $0x80
-    	       
 	jmp ok
     
-ok:
+ok:     
+        mov $SYS_close, %eax
+        mov fd_socket, %ebx
+        int $0x80
 	mov $0,%eax
 	jmp exit
+
+badreq:
+        mov $SYS_close, %eax
+        mov fd_socket, %ebx
+        int $0x80
+        mov $1,%eax                           /*TODO send 404 error*/
 
 exit:
 	mov %eax,%ebx		                           /* exitcode */
