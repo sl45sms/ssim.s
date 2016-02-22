@@ -40,9 +40,16 @@
 /**********************************************************************/
 .data
 
-df: 
-	.ascii "HTTP/1.0 200\r\n\r\n<html><head><body>Hello!</body></head></html>" #default file to serv
-.equ dfLen, . - df
+
+index.html: 
+     .ascii "HTTP/1.0 200\r\n\r\n<html><head><body>Hello!</body></head></html>" #default file to serv
+.equ index.htmlLen, . - index.html
+
+hi.html:
+    .ascii "HTTP/1.0 200\r\n\r\n<html><head><body>Hi!</body></head></html>" #default file to serv
+.equ hiLen, . - hi.html
+
+#TODO 403 500 etc...
 
 socket_args:
 	.int PF_INET                                              /*IPV4*/
@@ -302,8 +309,8 @@ resetalarm:
 write:  
 	mov $SYS_write, %eax                     /* use the write syscall*/
 	mov fd_socket, %ebx                        /* write to fd_socket */
-	mov $df, %ecx          
-	mov $dfLen, %edx       
+	mov $index.html, %ecx          
+	mov $index.htmlLen, %edx       
 	int $0x80
 	jmp ok
     
