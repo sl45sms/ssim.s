@@ -40,31 +40,42 @@
 /**********************************************************************/
 .data
 
-index.html: 
+f1: 
      .ascii "HTTP/1.0 200\r\n\r\n<html><head><body>Hello!</body></head></html>" #default file to serv
-.equ index.htmlLen, . - index.html
+.equ f1Len, . - f1
 
-hi.html:
+f2:
     .ascii "HTTP/1.0 200\r\n\r\n<html><head><body>Hi!</body></head></html>" 
-.equ hiLen, . - hi.html
+.equ f2Len, . - f2
 
-test.html:
+f3:
     .ascii "HTTP/1.0 200\r\n\r\n<html><head><body>test!</body></head></html>" 
-.equ testLen, . - test.html
+.equ f3Len, . - f3
 
-err403.html:
+err403:
     .ascii "HTTP/1.0 403\r\n\r\n<html><head><body>not found</body></head></html>" 
-.equ err403Len, . - err403.html
+.equ err403Len, . - err403
 
 
 #paths   TODO idea if 0 terminated string loop until string found (and keep countno) or double 00 (EOF?)
+paths:
 1: .ascii "index.html"
-   .ascii "HTTP/1.0 200\r\n\r\n<html><head><body>Hello!</body></head></html>" #default file to serv
-   .equ l1Len, . - 1b
-2: .ascii  "hi.html\0"
-3: .ascii  "sub/test.html\0"
-3: .ascii  "favicon.ico\0"
-4: .ascii "\0\0"
+   .int (f1)
+   .int f1Len
+   .int 0
+2: .ascii  "hi.html"
+   .int (f2)
+   .int f2Len
+   .int 0
+3: .ascii  "sub/test.html"
+   .int(f3)
+   .int f3Len
+   .int 0
+4: .ascii  "favicon.ico"
+   .int(err403)
+   .int err403Len
+   .int 0
+5: .ascii "end"
 
 
 #TODO err 500 etc...
@@ -123,6 +134,9 @@ clientsock:
 
 bufp:   .int 0
 buf:    .fill bufsiz, 1, 0
+
+pathLen: .int 0
+
 
 /******************************************************************************/
 .text
@@ -264,10 +278,10 @@ noreaderr:
 	add (bufp), %eax 
 	mov %eax, (bufp)
 	mov $('\r | '\n << 8 | '\r << 16 | '\n << 24), %eax  #check crlf
-        mov $buf, %esi
-        mov (bufp), %ecx
-        sub $3, %ecx
-        jle keepread
+    mov $buf, %esi
+    mov (bufp), %ecx
+    sub $3, %ecx
+    jle keepread
 allign:
 	cmp (%esi), %eax
 	je donereading
@@ -285,35 +299,65 @@ donereading:
 	jl badreq               #path too short     
 
         
-        #print headers to stdout
-	mov $SYS_write, %eax                     /* use the write syscall*/
-	mov $1, %ebx                             /* write to stdout */
-	mov $buf, %ecx
-	mov $bufsiz, %edx
-	int $0x80
-
+    #print headers to stdout
+	##mov $SYS_write, %eax                     /* use the write syscall*/
+	##mov $1, %ebx                             /* write to stdout */
+	##mov $buf, %ecx
+	##mov $bufsiz, %edx
+	##int $0x80
 
  	xor %eax, %eax
 	mov $0x20, %al          #look for space 
-        mov $buf+5, %edi        #ignore GET
+    mov $buf+5, %edi        #ignore GET
 	sub %ecx, %ecx
 	not %ecx 
-        cld                     #look forward
-        repne scasb
-        test %ecx, %ecx         #test if %eax is 0       
-        jz badreq
-        not %ecx
+    cld                     #look forward
+    repne scasb
+    test %ecx, %ecx         #test if %eax is 0       
+    jz badreq
+    not %ecx
 	dec %ecx                # %ecx contains the length 
+    mov %ecx,(pathLen)
+    
+#todo save path length to mem 
+
          
 #print path to stdout
-        mov $SYS_write, %eax                     /* use the write syscall*/
-        mov $1, %ebx                             /* write to stdout */
-        mov %ecx, %edx                           /* length */
-        mov $path, %ecx                          /* path string */
-        int $0x80
+    mov $SYS_write, %eax                     /* use the write syscall*/
+    mov $1, %ebx                             /* write to stdout */
+    mov (pathLen), %edx                       /* length */
+    mov $path, %ecx                          /* path string */
+    int $0x80
 
 #TODO select label based on path
 
+
+/*
+compare path on first path
+if found then set %ecx and %edx and exit loop
+if not loop until 0 and compare again
+if path is the "end" stop
+
+
+the following checks only the first file....
+*/
+
+   mov $path,%esi           #compare path with first file       
+   mov $paths,%edi
+   mov (pathLen),%ecx            #length
+   cld
+   repe  cmpsb
+   jecxz  equal             #jump when ecx is zero
+   
+   mov $err403, %ecx          
+   mov $err403Len, %edx  
+   
+   
+   jmp resetalarm
+equal:
+   mov $f1, %ecx          
+   mov $f1Len, %edx
+   jmp resetalarm   
 
 
 resetalarm:
@@ -326,24 +370,22 @@ resetalarm:
 
 write:  
 	mov $SYS_write, %eax                     /* use the write syscall*/
-	mov fd_socket, %ebx                        /* write to fd_socket */
-	mov $index.html, %ecx          
-	mov $index.htmlLen, %edx       
+	mov fd_socket, %ebx                        /* write to fd_socket */    
 	int $0x80
 	jmp ok
     
 ok:     
-        mov $SYS_close, %eax
-        mov fd_socket, %ebx
-        int $0x80
+	mov $SYS_close, %eax
+	mov fd_socket, %ebx
+	int $0x80
 	mov $0,%eax
 	jmp exit
 
 badreq:
-        mov $SYS_close, %eax
-        mov fd_socket, %ebx
-        int $0x80
-        mov $1,%eax                           /*TODO send 404 error*/
+    mov $SYS_close, %eax
+    mov fd_socket, %ebx
+    int $0x80
+    mov $1,%eax                           /*TODO send 404 error*/
 
 exit:
 	mov %eax,%ebx		                           /* exitcode */
