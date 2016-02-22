@@ -150,13 +150,14 @@ accept_loop:
 	jnl reap_zombies
 	nop # TODO on failure, complain.
 	jmp accept_loop
-reap_zombies: 
-zombies:
+
+#
+reap_zombies:
 	xor %edx, %edx
 	cmpl $0, (available_connections)
 	jz noconnections
-        
 	mov $WNOHANG, %edx
+noconnections:
 	mov $0,%ecx
 	mov $0,%ebx
 	mov $SYS_waitpid,%eax
@@ -166,16 +167,17 @@ zombies:
 	jz nozombies                 # WNOHANG not have to wait and no zombies ready for reaping
 	jl complain                  # TODO error report
 	incl (available_connections) # We reaped a zombie.
-	jmp zombies
+	jmp reap_zombies
         
-noconnections:
+complain:
 	cmp $-ECHILD, %eax
 	je nozombies   # apocalipse not now
-complain:
 	nop            #TODO complain waitpid
 nozombies:
 	jmp fork
 	nop
+
+#
 fork:
 	mov $SYS_fork,%eax
 	int $0x80   
