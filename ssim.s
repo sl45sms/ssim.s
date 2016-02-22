@@ -40,16 +40,34 @@
 /**********************************************************************/
 .data
 
-
 index.html: 
      .ascii "HTTP/1.0 200\r\n\r\n<html><head><body>Hello!</body></head></html>" #default file to serv
 .equ index.htmlLen, . - index.html
 
 hi.html:
-    .ascii "HTTP/1.0 200\r\n\r\n<html><head><body>Hi!</body></head></html>" #default file to serv
+    .ascii "HTTP/1.0 200\r\n\r\n<html><head><body>Hi!</body></head></html>" 
 .equ hiLen, . - hi.html
 
-#TODO 403 500 etc...
+test.html:
+    .ascii "HTTP/1.0 200\r\n\r\n<html><head><body>test!</body></head></html>" 
+.equ testLen, . - test.html
+
+err403.html:
+    .ascii "HTTP/1.0 403\r\n\r\n<html><head><body>not found</body></head></html>" 
+.equ err403Len, . - err403.html
+
+
+#paths   TODO idea if 0 terminated string loop until string found (and keep countno) or double 00 (EOF?)
+1: .ascii "index.html"
+   .ascii "HTTP/1.0 200\r\n\r\n<html><head><body>Hello!</body></head></html>" #default file to serv
+   .equ l1Len, . - 1b
+2: .ascii  "hi.html\0"
+3: .ascii  "sub/test.html\0"
+3: .ascii  "favicon.ico\0"
+4: .ascii "\0\0"
+
+
+#TODO err 500 etc...
 
 socket_args:
 	.int PF_INET                                              /*IPV4*/
@@ -284,18 +302,18 @@ donereading:
         repne scasb
         test %ecx, %ecx         #test if %eax is 0       
         jz badreq
-#        movb $0, -1(%edi)       # NUL-terminate the path.
-#        movb $0x10, -1(%edi)
         not %ecx
 	dec %ecx                # %ecx contains the length 
          
-
 #print path to stdout
         mov $SYS_write, %eax                     /* use the write syscall*/
         mov $1, %ebx                             /* write to stdout */
         mov %ecx, %edx                           /* length */
         mov $path, %ecx                          /* path string */
         int $0x80
+
+#TODO select label based on path
+
 
 
 resetalarm:
