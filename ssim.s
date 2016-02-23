@@ -56,29 +56,32 @@ err403:
     .ascii "HTTP/1.0 403\r\n\r\n<html><head><body>not found</body></head></html>" 
 .equ err403Len, . - err403
 
+ico:
+    .ascii "HTTP/1.0 403\r\n\r\nicon\nicon\n"
+.equ icoLen, . - ico
+
+
+
+
 
 #paths   TODO idea if 0 terminated string loop until string found (and keep countno) or double 00 (EOF?)
 paths:
 1: .int 10
    .ascii "index.html"
    .int  f1
-   .long f1Len
-   .int 0
+   .int f1Len    #TODO long?
 2: .int 7
    .ascii "hi.html"
    .int f2
-   .long f2Len
-   .int 0
+   .int f2Len
 3: .int 13
    .ascii  "sub/test.html"
    .int f3
    .long f3Len
-   .int 0
 4: .int 12
    .ascii  "favicon.ico"
-   .int err403
-   .long err403Len
-   .int 0
+   .int ico
+   .int icoLen
 5: .int 0
    .ascii "end"
 
@@ -345,34 +348,52 @@ the following checks only the first file....
 
 searchFile:
 
-   mov (pathLen),%ecx       # to mikos tou path   TODO Auto isos mporei na vgei ekso apo to loop     
+   mov (pathLen),%ecx       # to mikos tou path  
  
-   mov paths(,%ebx,4),%edx # to proto int sto paths einai to length tou string apo kato
+   mov paths(,%ebx,1),%edx # to proto int sto paths einai to length tou string apo kato
    cmp $0,%edx             # an to length einai 0 eimaste sto telos tis listas 
-   jz notfound             # jmp to 403 error
+   je notfound             # jmp to 403 error
 
    cmp %edx, %ecx          # sigrine to mikos tou path me auto sthn lista 
    jne noequal             # an oxi pigene sto parakato  
 
-   mov $path,%esi           #compare path with first file       
-   mov $paths+4,%edi        #einai to path +enan integer 
+   mov $path,%esi          #compare path with first file       
+   
+
+
+
+
+
+#   mov $paths,%edi        #einai to path +enan integer 
+#   add $4,%edi
+
+	mov $paths,%edi
+        add %ebx,%edi
+        add $4,%edi
+   
+
+
+
    mov (pathLen),%ecx       #length   TODO auto mallon den xriazete edo afou to ekana set epano
    cld
    repe  cmpsb
    jecxz  equal             #jump when ecx is zero
-
+   
 
 noequal:
 
-#TODO inc %ebx
+	add $4,%ebx
+	add %edx,%ebx
+        add $4,%ebx
+        
+jmp searchFile
+        
+
+
+#TODO 
 #loop back until found filename or 0 length
 #in that case jump to no exist
 
-
-
-
-
-#jmp searchFile
 
 notfound:  
    mov $err403, %ecx          
