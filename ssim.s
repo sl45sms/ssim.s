@@ -64,7 +64,7 @@ ico:
 
 
 
-#paths   TODO idea if 0 terminated string loop until string found (and keep countno) or double 00 (EOF?)
+#paths   
 paths:
 1: .int 10
    .ascii "index.html"
@@ -331,7 +331,7 @@ donereading:
 	mov $path, %ecx                          /* path string */
 	int $0x80
 
-# TODO select label based on path
+# TODO 
 
 /*
 compare path on first path
@@ -352,7 +352,7 @@ searchFile:
  
    mov paths(,%ebx,1),%edx # to proto int sto paths einai to length tou string apo kato
    cmp $0,%edx             # an to length einai 0 eimaste sto telos tis listas 
-   je notfound             # jmp to 403 error
+   jz notfound             # jmp to 403 error
 
    cmp %edx, %ecx          # sigrine to mikos tou path me auto sthn lista 
    jne noequal             # an oxi pigene sto parakato  
@@ -382,9 +382,11 @@ searchFile:
 
 noequal:
 
-	add $4,%ebx
-	add %edx,%ebx
-        add $4,%ebx
+	add $4,%ebx       #to length
+	add %edx,%ebx     #to mikos tou string
+        add $4,%ebx       #o pointer sto file
+        add $4,%ebx       #to megethos tou file
+        
         
 jmp searchFile
         
