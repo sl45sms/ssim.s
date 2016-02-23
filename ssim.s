@@ -59,23 +59,28 @@ err403:
 
 #paths   TODO idea if 0 terminated string loop until string found (and keep countno) or double 00 (EOF?)
 paths:
-1: .ascii "index.html"
+1: .int 10
+   .ascii "index.html"
    .int (f1)
    .int f1Len
    .int 0
-2: .ascii  "hi.html"
+2: .int 7
+   .ascii  "hi.html"
    .int (f2)
    .int f2Len
    .int 0
-3: .ascii  "sub/test.html"
+3: .int 13
+   .ascii  "sub/test.html"
    .int(f3)
    .int f3Len
    .int 0
-4: .ascii  "favicon.ico"
+4: .int 12
+   .ascii  "favicon.ico"
    .int(err403)
    .int err403Len
    .int 0
-5: .ascii "end"
+5: .int 0
+   .ascii "end"
 
 
 #TODO err 500 etc...
@@ -278,10 +283,10 @@ noreaderr:
 	add (bufp), %eax 
 	mov %eax, (bufp)
 	mov $('\r | '\n << 8 | '\r << 16 | '\n << 24), %eax  #check crlf
-    mov $buf, %esi
-    mov (bufp), %ecx
-    sub $3, %ecx
-    jle keepread
+	mov $buf, %esi
+	mov (bufp), %ecx
+	sub $3, %ecx
+	jle keepread
 allign:
 	cmp (%esi), %eax
 	je donereading
@@ -290,9 +295,6 @@ allign:
 	jmp keepread
 
 donereading:
-
-
-
 
 	#scan path
 	cmp $5, (bufp)
@@ -308,29 +310,27 @@ donereading:
 
  	xor %eax, %eax
 	mov $0x20, %al          #look for space 
-    mov $buf+5, %edi        #ignore GET
+	mov $buf+5, %edi        #ignore GET
 	sub %ecx, %ecx
 	not %ecx 
-    cld                     #look forward
-    repne scasb
-    test %ecx, %ecx         #test if %eax is 0       
-    jz badreq
-    not %ecx
+	cld                     #look forward
+	repne scasb
+	test %ecx, %ecx         #test if %eax is 0       
+	jz badreq
+	not %ecx
 	dec %ecx                # %ecx contains the length 
-    mov %ecx,(pathLen)
+	mov %ecx,(pathLen)
     
 #todo save path length to mem 
-
          
 #print path to stdout
-    mov $SYS_write, %eax                     /* use the write syscall*/
-    mov $1, %ebx                             /* write to stdout */
-    mov (pathLen), %edx                       /* length */
-    mov $path, %ecx                          /* path string */
-    int $0x80
+	mov $SYS_write, %eax                     /* use the write syscall*/
+	mov $1, %ebx                             /* write to stdout */
+	mov (pathLen), %edx                       /* length */
+	mov $path, %ecx                          /* path string */
+	int $0x80
 
 #TODO select label based on path
-
 
 /*
 compare path on first path
@@ -338,21 +338,24 @@ if found then set %ecx and %edx and exit loop
 if not loop until 0 and compare again
 if path is the "end" stop
 
-
 the following checks only the first file....
 */
 
+   mov (pathLen),%ecx       # to mikos tou path        
+   mov (paths),%ebx         # to proto int sto paths einai to length tou string apo kato 
+   cmp %ecx,%ebx            # opote an kano kati san tsekare an einai idio to length tsekare to string 
+   jne noequal              # an oxi pigene ston parakato int kai tsekare 
+
    mov $path,%esi           #compare path with first file       
-   mov $paths,%edi
-   mov (pathLen),%ecx            #length
+   mov $paths+4,%edi        #einai to path +enan integer 
+   mov (pathLen),%ecx       #length
    cld
    repe  cmpsb
    jecxz  equal             #jump when ecx is zero
-   
+ 
+noequal:  
    mov $err403, %ecx          
-   mov $err403Len, %edx  
-   
-   
+   mov $err403Len, %edx      
    jmp resetalarm
 equal:
    mov $f1, %ecx          
@@ -363,30 +366,25 @@ equal:
 resetalarm:
 	mov $SYS_alarm, %eax                  /*reset alarm*/
 	mov $0,%ebx
-	int $0x80
- 
+	int $0x80 
 	jmp write
 	nop
-
 write:  
 	mov $SYS_write, %eax                     /* use the write syscall*/
 	mov fd_socket, %ebx                        /* write to fd_socket */    
 	int $0x80
 	jmp ok
-    
 ok:     
 	mov $SYS_close, %eax
 	mov fd_socket, %ebx
 	int $0x80
 	mov $0,%eax
 	jmp exit
-
 badreq:
-    mov $SYS_close, %eax
-    mov fd_socket, %ebx
-    int $0x80
-    mov $1,%eax                           /*TODO send 404 error*/
-
+	mov $SYS_close, %eax
+	mov fd_socket, %ebx
+	int $0x80
+	mov $1,%eax                           /*TODO send 404 error*/
 exit:
 	mov %eax,%ebx		                           /* exitcode */
 	neg %ebx
