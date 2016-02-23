@@ -61,23 +61,23 @@ err403:
 paths:
 1: .int 10
    .ascii "index.html"
-   .int (f1)
-   .int f1Len
+   .int  f1
+   .long f1Len
    .int 0
 2: .int 7
-   .ascii  "hi.html"
-   .int (f2)
-   .int f2Len
+   .ascii "hi.html"
+   .int f2
+   .long f2Len
    .int 0
 3: .int 13
    .ascii  "sub/test.html"
-   .int(f3)
-   .int f3Len
+   .int f3
+   .long f3Len
    .int 0
 4: .int 12
    .ascii  "favicon.ico"
-   .int(err403)
-   .int err403Len
+   .int err403
+   .long err403Len
    .int 0
 5: .int 0
    .ascii "end"
@@ -298,12 +298,10 @@ donereading:
 
 	#scan path
 	cmp $5, (bufp)
-	jl badreq               #path too short     
-
-        
+	jl badreq                    #path too short 
     #print headers to stdout
-	##mov $SYS_write, %eax                     /* use the write syscall*/
-	##mov $1, %ebx                             /* write to stdout */
+	##mov $SYS_write, %eax         /* use the write syscall*/
+	##mov $1, %ebx                 /* write to stdout */
 	##mov $buf, %ecx
 	##mov $bufsiz, %edx
 	##int $0x80
@@ -321,16 +319,16 @@ donereading:
 	dec %ecx                # %ecx contains the length 
 	mov %ecx,(pathLen)
     
-#todo save path length to mem 
+ 
          
 #print path to stdout
 	mov $SYS_write, %eax                     /* use the write syscall*/
 	mov $1, %ebx                             /* write to stdout */
-	mov (pathLen), %edx                       /* length */
+	mov (pathLen), %edx                      /* length */
 	mov $path, %ecx                          /* path string */
 	int $0x80
 
-#TODO select label based on path
+# TODO select label based on path
 
 /*
 compare path on first path
@@ -341,27 +339,56 @@ if path is the "end" stop
 the following checks only the first file....
 */
 
-   mov (pathLen),%ecx       # to mikos tou path        
-   mov (paths),%ebx         # to proto int sto paths einai to length tou string apo kato 
-   cmp %ecx,%ebx            # opote an kano kati san tsekare an einai idio to length tsekare to string 
-   jne noequal              # an oxi pigene ston parakato int kai tsekare 
+
+   mov $0,%ebx              #to %ebx tha to exo gia offset
+
+
+searchFile:
+
+   mov (pathLen),%ecx       # to mikos tou path   TODO Auto isos mporei na vgei ekso apo to loop     
+ 
+   mov paths(,%ebx,4),%edx # to proto int sto paths einai to length tou string apo kato
+   cmp $0,%edx             # an to length einai 0 eimaste sto telos tis listas 
+   jz notfound             # jmp to 403 error
+
+   cmp %edx, %ecx          # sigrine to mikos tou path me auto sthn lista 
+   jne noequal             # an oxi pigene sto parakato  
 
    mov $path,%esi           #compare path with first file       
    mov $paths+4,%edi        #einai to path +enan integer 
-   mov (pathLen),%ecx       #length
+   mov (pathLen),%ecx       #length   TODO auto mallon den xriazete edo afou to ekana set epano
    cld
    repe  cmpsb
    jecxz  equal             #jump when ecx is zero
- 
-noequal:  
+
+
+noequal:
+
+#TODO inc %ebx
+#loop back until found filename or 0 length
+#in that case jump to no exist
+
+
+
+
+
+#jmp searchFile
+
+notfound:  
    mov $err403, %ecx          
    mov $err403Len, %edx      
    jmp resetalarm
-equal:
-   mov $f1, %ecx          
-   mov $f1Len, %edx
-   jmp resetalarm   
 
+equal:
+   
+   add $4,%ebx                #size of int 
+   add (pathLen),%ebx         #length of path
+   
+   mov paths(,%ebx,1), %ecx    #fX      
+   add $4,%ebx
+   mov paths(,%ebx,1), %edx    #fXlen   
+
+   jmp resetalarm   
 
 resetalarm:
 	mov $SYS_alarm, %eax                  /*reset alarm*/
