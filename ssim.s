@@ -49,7 +49,7 @@ f2:
 .equ f2Len, . - f2
 
 f3:
-    .ascii "HTTP/1.0 200\r\n\r\n<html><head><body>test!</body></head></html>" 
+    .ascii "HTTP/1.0 200\r\n\r\n<html><head><body>Test!</body></head></html>" 
 .equ f3Len, . - f3
 
 err403:
@@ -57,19 +57,15 @@ err403:
 .equ err403Len, . - err403
 
 ico:
-    .ascii "HTTP/1.0 403\r\n\r\nicon\nicon\n"
+    .byte 0x00,0x00,0x01,0x00,0x01,0x00,0x10,0x10,0x10,0x00,0x01,0x00,0x04,0x00,0x28,0x01,0x00,0x00,0x16,0x00,0x00,0x00,0x28,0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x20,0x00,0x00,0x00,0x01,0x00,0x04,0x00,0x00,0x00,0x00,0x00,0x80,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xFF,0x84,0x00,0x00,0xF2,0xF7,0xF3,0x00,0x00,0xFF,0x22,0x00,0x00,0x00,0xFF,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x22,0x22,0x00,0x00,0x00,0x00,0x00,0x02,0x44,0x44,0x20,0x00,0x00,0x00,0x00,0x24,0x44,0x44,0x42,0x00,0x00,0x00,0x02,0x44,0x33,0x34,0x44,0x20,0x00,0x00,0x24,0x44,0x33,0x33,0x44,0x42,0x00,0x00,0x24,0x44,0x44,0x33,0x44,0x42,0x00,0x00,0x24,0x44,0x33,0x33,0x44,0x42,0x00,0x00,0x24,0x44,0x33,0x31,0x44,0x42,0x00,0x00,0x24,0x44,0x33,0x44,0x44,0x42,0x00,0x00,0x24,0x44,0x33,0x33,0x44,0x42,0x00,0x00,0x24,0x44,0x43,0x33,0x44,0x42,0x00,0x00,0x02,0x24,0x44,0x44,0x42,0x20,0x00,0x00,0x00,0x02,0x22,0x22,0x20,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xFF,0xFF,0x00,0x00,0xFF,0xFF,0x00,0x00,0xFC,0x3F,0x00,0x00,0xF8,0x1F,0x00,0x00,0xF0,0x0F,0x00,0x00,0xE0,0x07,0x00,0x00,0xC0,0x03,0x00,0x00,0xC0,0x03,0x00,0x00,0xC0,0x03,0x00,0x00,0xC0,0x03,0x00,0x00,0xC0,0x03,0x00,0x00,0xC0,0x03,0x00,0x00,0xC0,0x03,0x00,0x00,0xE0,0x07,0x00,0x00,0xF8,0x1F,0x00,0x00,0xFF,0xFF,0x00,0x00
 .equ icoLen, . - ico
-
-
-
-
 
 #paths   
 paths:
 1: .int 10
    .ascii "index.html"
    .int  f1
-   .int f1Len    #TODO long?
+   .int f1Len    #TODO long?     #TODO mime?
 2: .int 7
    .ascii "hi.html"
    .int f2
@@ -78,7 +74,7 @@ paths:
    .ascii  "sub/test.html"
    .int f3
    .long f3Len
-4: .int 12
+4: .int 11
    .ascii  "favicon.ico"
    .int ico
    .int icoLen
@@ -94,7 +90,8 @@ socket_args:
 	.int 0 
 
 optval:
-	.int 1    
+	.int 1
+	    
 setsockopt_args:
 	.int  0
 	.int  SOL_SOCKET
@@ -106,6 +103,7 @@ addr:
 	.short AF_INET                                             /*IPV4*/
 	.byte port>>8,port & 0xff
 	.int 0                                    /* INADDR_ANY: 0.0.0.0 */
+	
 bind_args:
 	.int 0
 	.int addr
@@ -255,8 +253,9 @@ setalarm:
 	mov $SYS_alarm, %eax                  /* cloce child after 32 sec */
 	mov $32,%ebx                          /* if not respont */ 
 	int $0x80
+	
 	/**************************************/
-	/* TODO read client and select "file" */
+	/*  read client and select "file"     */
 	/**************************************/
 
 readreq:
@@ -265,7 +264,7 @@ keepread:
 	mov (bufp), %eax
 	mov $bufsiz-1, %edx
 	sub %eax, %edx                    /* calculate remaining space */
-        add $buf, %eax
+	add $buf, %eax
 read:       
 	mov %edx,%edx
 	mov %eax,%ecx
@@ -278,11 +277,11 @@ readerr:
 	mov fd_socket,%ebx
 	mov $SYS_close,%eax
 	int $0x80
-        nop                        #TODO report error
+	nop                        #TODO report error
 	jmp accept_loop
 
 noreaderr:
-        je donereading             #eof
+	je donereading             #eof
 	add (bufp), %eax 
 	mov %eax, (bufp)
 	mov $('\r | '\n << 8 | '\r << 16 | '\n << 24), %eax  #check crlf
@@ -290,6 +289,7 @@ noreaderr:
 	mov (bufp), %ecx
 	sub $3, %ecx
 	jle keepread
+	
 allign:
 	cmp (%esi), %eax
 	je donereading
@@ -302,12 +302,13 @@ donereading:
 	#scan path
 	cmp $5, (bufp)
 	jl badreq                    #path too short 
+
     #print headers to stdout
-	##mov $SYS_write, %eax         /* use the write syscall*/
-	##mov $1, %ebx                 /* write to stdout */
-	##mov $buf, %ecx
-	##mov $bufsiz, %edx
-	##int $0x80
+	#mov $SYS_write, %eax         /* use the write syscall*/
+	#mov $1, %ebx                 /* write to stdout */
+	#mov $buf, %ecx
+	#mov $bufsiz, %edx
+	#int $0x80
 
  	xor %eax, %eax
 	mov $0x20, %al          #look for space 
@@ -321,82 +322,54 @@ donereading:
 	not %ecx
 	dec %ecx                # %ecx contains the length 
 	mov %ecx,(pathLen)
-    
- 
-         
-#print path to stdout
-	mov $SYS_write, %eax                     /* use the write syscall*/
-	mov $1, %ebx                             /* write to stdout */
-	mov (pathLen), %edx                      /* length */
-	mov $path, %ecx                          /* path string */
-	int $0x80
+       
+	#print path to stdout
+	#mov $SYS_write, %eax                     /* use the write syscall*/
+	#mov $1, %ebx                             /* write to stdout */
+	#mov (pathLen), %edx                      /* length */
+	#mov $path, %ecx                          /* path string */
+	#int $0x80
 
-# TODO 
-
-/*
-compare path on first path
-if found then set %ecx and %edx and exit loop
-if not loop until 0 and compare again
-if path is the "end" stop
-
-the following checks only the first file....
-*/
-
-
-   mov $0,%ebx              #to %ebx tha to exo gia offset
-
-
+    /****************************************
+     * Search for file on paths list        *
+     ****************************************/
+	mov $0,%ebx              #%ebx is offset for file name
+	
 searchFile:
 
-   mov (pathLen),%ecx       # to mikos tou path  
+	mov (pathLen),%ecx       # to mikos tou path  
  
-   mov paths(,%ebx,1),%edx # to proto int sto paths einai to length tou string apo kato
-   cmp $0,%edx             # an to length einai 0 eimaste sto telos tis listas 
-   jz notfound             # jmp to 403 error
+	mov paths(,%ebx,1),%edx # to proto int sto paths einai to length tou string apo kato
+	cmp $0,%edx             # an to length einai 0 eimaste sto telos tis listas 
+	jz notfound             # jmp to 403 error
 
-   cmp %edx, %ecx          # sigrine to mikos tou path me auto sthn lista 
-   jne noequal             # an oxi pigene sto parakato  
+	cmp %edx, %ecx          # sigrine to mikos tou path me auto sthn lista 
+	jne noequal             # an oxi pigene sto parakato  
 
-   mov $path,%esi          #compare path with first file       
-   
-
-
-
-
+	mov $path,%esi          #compare path with first file       
 
 #   mov $paths,%edi        #einai to path +enan integer 
 #   add $4,%edi
 
 	mov $paths,%edi
-        add %ebx,%edi
-        add $4,%edi
-   
+	add %ebx,%edi
+	add $4,%edi
 
-
-
-   mov (pathLen),%ecx       #length   TODO auto mallon den xriazete edo afou to ekana set epano
-   cld
-   repe  cmpsb
-   jecxz  equal             #jump when ecx is zero
-   
+	mov (pathLen),%ecx       #length   TODO auto mallon den xriazete edo afou to ekana set epano
+	cld
+	repe  cmpsb
+	jecxz  equal             #jump when ecx is zero
 
 noequal:
 
 	add $4,%ebx       #to length
 	add %edx,%ebx     #to mikos tou string
-        add $4,%ebx       #o pointer sto file
-        add $4,%ebx       #to megethos tou file
+	add $4,%ebx       #o pointer sto file
+	add $4,%ebx       #to megethos tou file
         
         
 jmp searchFile
         
-
-
-#TODO 
-#loop back until found filename or 0 length
-#in that case jump to no exist
-
-
 notfound:  
    mov $err403, %ecx          
    mov $err403Len, %edx      
