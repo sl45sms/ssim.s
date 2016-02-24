@@ -12,6 +12,17 @@ objcopy -S -R .note.gnu.build-id ssims.o ssims
 
 objdump -xd ./ssims
 
+
+###### informations
+objdump -s -j .rodata ./ssims   or  readelf -x .rodata ./ssims
+
+readelf -a ./ssims
+
+size -x ./ssims
+
+readelf --symbols ./ssims.o    or   nm ./ssims.o
+
+
 ######debug
 strace ./ssims
 

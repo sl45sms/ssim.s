@@ -38,7 +38,7 @@
 .equiv SYS_alarm, 27
 
 /**********************************************************************/
-.section .rodata
+.section .rodata               #.rodata are never swapped
 
 f1: 
      .ascii "HTTP/1.0 200\r\n\r\n<html><head><body>Hello!</body></head></html>" #default file to serv
