@@ -38,7 +38,7 @@
 .equiv SYS_alarm, 27
 
 /**********************************************************************/
-.data
+.section .rodata
 
 f1: 
      .ascii "HTTP/1.0 200\r\n\r\n<html><head><body>Hello!</body></head></html>" #default file to serv
@@ -81,17 +81,19 @@ paths:
 5: .int 0
    .ascii "end"
 
+#error's
+err_accept:
+	.ascii "Error 1: at accept";
+#... TODO other errors
 
 #TODO err 500 etc...
 
+.data
 socket_args:
 	.int PF_INET                                              /*IPV4*/
 	.int SOCK_STREAM        /*two-way, connection-based byte streams*/
 	.int 0 
-
-optval:
-	.int 1
-	    
+   
 setsockopt_args:
 	.int  0
 	.int  SOL_SOCKET
@@ -108,23 +110,23 @@ bind_args:
 	.int 0
 	.int addr
 	.int sockaddr_in_size                     /* socket address size */
-          
+      
 listen_args:
 	.int 0
 	.int 5 #max
-       
+	
 accept_args:
 	.int 0
 	.int sockaddr
 	.int sockaddr_size     
 
+optval:
+	.int 1
+
 available_connections:
 	.int 2048
 
-#error's
-err_accept:
-	.ascii "Error 1: at accept";
-#... TODO other errors
+
 
 
 /******************************************************************************/       
