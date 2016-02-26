@@ -28,3 +28,6 @@ strace ./ssims
 
 ######file2byte
 hexdump -v -e '/1 "0x%02X,"' file |sed s'/.$//'
+
+######file2zip
+gzip -9c file | file2byte
